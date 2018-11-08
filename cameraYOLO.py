@@ -10,6 +10,7 @@ import numpy as np
 import json
 import cv2
 import pika
+import time
 import datetime
 from transform import CoordinateTransform
 from reprojecter import ReprojectTo4326
@@ -208,7 +209,7 @@ if __name__ == '__main__':
     cv2.namedWindow('homography')
     #cv2.imshow('homography',img_map)  
 
-    cap=cv2.VideoCapture("http://root:progtrl01@192.168.208.55/mjpg/1/video.mjpg")
+    cap=cv2.VideoCapture("http://root:progtrl01@192.168.208.200/mjpg/1/video.mjpg")
 
     rows_map_frame,cols_map_frame, _ = img_map.shape 
     img_map_view = np.zeros((int(cols_map_frame/4), int(rows_map_frame/4), 3), np.uint8)
@@ -315,9 +316,18 @@ if __name__ == '__main__':
             text = "ID {}".format(objectID)
             print(text)
             # insert data in queue in rabbitmq 
-            body = '{"name":"' + str(objectID) + '","timestamp":"2018-10-19T12:46:50.985+0200","geometry":{"type":"Point","coordinates":[' + str(centroid[1]) + ',' + str(centroid[0]) + ']},"accuracy":0.8, "source":{"type":"Manual","name":"PythonClientCameraRD"},"extra":{"Tile38Key":"' + key + '","SoftwareVersion":"1.0-SNAPSHOT"}}'            
+            
+
+            ts = time.time()
+            st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3]
+            timezone =time.strftime("%z")
+            timestamp = st+timezone            
+            
+            #body = '{"name":"' + str(objectID) + '","timestamp":"2018-10-19T12:46:50.985+0200","geometry":{"type":"Point","coordinates":[' + str(centroid[1]) + ',' + str(centroid[0]) + ']},"accuracy":0.8, "source":{"type":"Manual","name":"PythonClientCameraRD"},"extra":{"Tile38Key":"' + key + '","SoftwareVersion":"1.0-SNAPSHOT"}}'            
+            body = '{"name":"' + str(objectID) + '","timestamp":"' + timestamp + '","geometry":{"type":"Point","coordinates":[' + str(centroid[1]) + ',' + str(centroid[0]) + ']},"accuracy":0.8, "source":{"type":"Manual","name":"PythonClientCameraRD"},"extra":{"Tile38Key":"' + key + '","SoftwareVersion":"cameraYOLO"}}'            
             print(centroid[1], centroid[0])
-            #channel.basic_publish(exchange='trilogis_exchange_pos',routing_key='trilogis_position',body=body, properties=pika.BasicProperties(delivery_mode = 2)) # make message persistent
+            #print(body)
+            channel.basic_publish(exchange='trilogis_exchange_pos',routing_key='trilogis_position',body=body, properties=pika.BasicProperties(delivery_mode = 2)) # make message persistent
             
             
         cv2.imshow('feed',frame)  
